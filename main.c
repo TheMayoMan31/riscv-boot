@@ -1,0 +1,138 @@
+#include "uart.h"
+
+void uart_init() {
+  volatile unsigned char *uart = (volatile unsigned char *)0x10000000;
+  uart[3] = 0x80;
+  uart[0] = 0x03;
+  uart[1] = 0x00;
+  uart[3] = 0x03;
+  uart[2] = 0xC7;
+}
+
+struct commands {
+  int ID;
+  char *Name;
+};
+
+void extractCMD(char *input, char *cmd) {
+  int i = 0;
+  while (input[i] != ' ' && input[i] != '\0') {
+    i++;
+  }
+
+  for (int j = 0; j < i; j++) {
+    cmd[j] = input[j];
+  }
+
+  cmd[i] = '\0';
+}
+
+static inline void set_mtvec(unsigned long addr) {
+  asm volatile("csrw mtvec, %0" : : "r"(addr));
+}
+
+bool commandChecker(char *cmdToCheck, char *cmd) {
+  int i = 0;
+  while (cmdToCheck[i] == cmd[i]) {
+    if (cmdToCheck[i] == '\0') {
+      return true;
+    }
+    i++;
+  }
+  return false;
+}
+
+void main() {
+
+  write_csr(mtvec, (unsigned long)trap_entry);
+
+  struct commands Commands[4];
+  for (int i = 0; i < 4; i++) {
+    Commands[i].ID = i;
+    switch (i) {
+    case 0:
+      Commands[i].Name = "help";
+      break;
+    case 1:
+      Commands[i].Name = "ls";
+      break;
+    case 2:
+      Commands[i].Name = "echo";
+      break;
+    case 3:
+      Commands[i].Name = "cd";
+      break;
+    }
+  }
+
+  uart_init();
+  volatile unsigned char *uart = (volatile unsigned char *)0x10000000;
+  char *hello = "Hello World\n";
+
+  char input[20];
+  while (true) {
+    for (int i = 0; i < 20; i++) {
+      input[i] = '\0';
+    }
+
+    char char_in = '\0';
+
+    int n = 0;
+    char *start = "\n> ";
+    uart_puts(start);
+
+    while (char_in != '\r') {
+      char_in = uart_getc();
+      if (char_in == 8 || char_in == 127) {
+        if (n > 0) {
+          n--;
+          input[n] = '\0';
+          uart_putc('\b');
+          uart_putc(' ');
+          uart_putc('\b');
+        }
+      } else if (char_in == '\r') {
+      } else {
+        if (n <= 19) {
+          input[n] = char_in;
+          uart_putc(input[n]);
+          n++;
+        }
+      }
+    }
+    uart_putc('\n');
+
+    char cmd[20];
+    extractCMD(input, cmd);
+
+    int idCMD = 999;
+
+    for (int i = 0; i < 4; i++) {
+      if (commandChecker(cmd, Commands[i].Name)) {
+        idCMD = i;
+        break;
+      }
+    }
+
+    switch (idCMD) {
+    case 0:
+      // help
+      uart_puts("Commands: help, ls, echo, cd");
+      break;
+    case 1:
+      // ls
+      //  REQUIRES FILE SYSTEM
+      break;
+    case 2:
+      // echo
+      uart_puts(&input[5]);
+      break;
+    case 3:
+      // cd
+      // REQUIRES FILE SYSTEM
+      break;
+    }
+  }
+  while (1)
+    ;
+}
