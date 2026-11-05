@@ -1,4 +1,6 @@
 #include "uart.h"
+#include "csr.h"
+#include "trap.h"
 
 void uart_init() {
   volatile unsigned char *uart = (volatile unsigned char *)0x10000000;
@@ -14,6 +16,13 @@ struct commands {
   char *Name;
 };
 
+void dump(unsigned long address, unsigned long length) {
+    for (int i = 0; i < length; i++) {
+        unsigned char b = *(volatile unsigned char *)(address + i);
+        uart_puth(b);
+    }
+}
+
 void extractCMD(char *input, char *cmd) {
   int i = 0;
   while (input[i] != ' ' && input[i] != '\0') {
@@ -25,10 +34,6 @@ void extractCMD(char *input, char *cmd) {
   }
 
   cmd[i] = '\0';
-}
-
-static inline void set_mtvec(unsigned long addr) {
-  asm volatile("csrw mtvec, %0" : : "r"(addr));
 }
 
 bool commandChecker(char *cmdToCheck, char *cmd) {
@@ -70,6 +75,9 @@ void main() {
   char *hello = "Hello World\n";
 
   char input[20];
+
+  dump(0x80000000, 2);
+
   while (true) {
     for (int i = 0; i < 20; i++) {
       input[i] = '\0';
@@ -80,6 +88,7 @@ void main() {
     int n = 0;
     char *start = "\n> ";
     uart_puts(start);
+
 
     while (char_in != '\r') {
       char_in = uart_getc();
@@ -128,11 +137,10 @@ void main() {
       uart_puts(&input[5]);
       break;
     case 3:
-      // cd
+      // cwrite_csr(mtvec, (unsigned long)trap_entry);d
       // REQUIRES FILE SYSTEM
       break;
     }
-  }
-  while (1)
-    ;
+    }
+  while (1);
 }
