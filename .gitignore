@@ -1,2 +1,6 @@
 *.o
 *.elf
+qemu.log
+virt.dtb
+virt.dts
+.idea/
