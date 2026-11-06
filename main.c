@@ -1,6 +1,7 @@
 #include "uart.h"
 #include "csr.h"
 #include "trap.h"
+#include "math.h"
 
 void uart_init() {
   volatile unsigned char *uart = (volatile unsigned char *)0x10000000;
@@ -51,7 +52,7 @@ void main() {
 
   write_csr(mtvec, (unsigned long)trap_entry);
 
-  struct commands Commands[4];
+  struct commands Commands[5];
   for (int i = 0; i < 4; i++) {
     Commands[i].ID = i;
     switch (i) {
@@ -67,6 +68,9 @@ void main() {
     case 3:
       Commands[i].Name = "cd";
       break;
+    case 4:
+      Commands[i].Name = "dump";
+      break;
     }
   }
 
@@ -75,8 +79,6 @@ void main() {
   char *hello = "Hello World\n";
 
   char input[20];
-
-  dump(0x80000000, 2);
 
   while (true) {
     for (int i = 0; i < 20; i++) {
@@ -116,7 +118,7 @@ void main() {
 
     int idCMD = 999;
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
       if (commandChecker(cmd, Commands[i].Name)) {
         idCMD = i;
         break;
@@ -126,7 +128,7 @@ void main() {
     switch (idCMD) {
     case 0:
       // help
-      uart_puts("Commands: help, ls, echo, cd");
+      uart_puts("Commands: help, ls, echo, cd, dump");
       break;
     case 1:
       // ls
@@ -140,6 +142,54 @@ void main() {
       // cwrite_csr(mtvec, (unsigned long)trap_entry);d
       // REQUIRES FILE SYSTEM
       break;
+    case 4:
+        // dump
+        char *p = &input[5];
+        int index = 0;
+        char hex_num[8];
+        unsigned long hex = 0;
+
+        int bytes = 8;
+        if (*p==48 && *(++p)==120) {
+            ++p;
+            while (((*p > 47 && *p < 58) || (*p>64 && *p<71)) && index < 8) {
+                hex_num[index] = *p;
+                p++;
+                index++;
+            }
+            while (*p==' ') {
+                p++;
+            }
+
+
+            int byte_temp = 0;
+            while(*p > 47 && *p < 58) {
+                byte_temp = byte_temp*10 + (*p-48);
+                p++;
+            }
+            if (byte_temp > 0) {
+                bytes = byte_temp;
+            }
+
+            if (byte_temp > 256) { uart_puts("Too long"); break; }
+
+            //little endian
+            for (int i = 0; i<index; i++) {
+                if (hex_num[i] > 47 && hex_num[i] < 58) {
+                    hex = hex*16 + (hex_num[i]-48);
+                } else {
+                    hex = hex*16 + (hex_num[i]-55);
+                }
+            }
+
+            dump(hex, bytes);
+
+
+        } else {
+            uart_puts("Invalid command");
+        }
+
+        break;
     }
     }
   while (1);
