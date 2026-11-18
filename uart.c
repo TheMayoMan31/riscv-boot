@@ -46,34 +46,27 @@ void uart_puti(int i) {
 
 
 }
-
-void uart_puth(unsigned long input) { //Write hexadecimal from long to output
+void uart_puth(unsigned long input) {
     char hex_num[16];
 
-    int n = 0;
-    if (input != 0) {
-        while (input != 0) {
-            int hexdigit = input % 16; //Finds digits through integer division of 16
-            if (hexdigit < 10) {
-                hex_num[n] = hexdigit + 48;
-            } else {
-                hex_num[n] = hexdigit + 55;
-            }
-
-            input = input / 16;
-            n++;
-        }
-    } else {
-        for (int i = 0; i < 8; i++) {
-            hex_num[i] = '0';
-        }
+    for (int i = 0; i < 16; i++) {
+        hex_num[i] = '0';
     }
 
-    n--;
+    int pos = 15;
+    while (input != 0) {
+        int hexdigit = input % 16;
+        if (hexdigit < 10) {
+            hex_num[pos] = hexdigit + 48;
+        } else {
+            hex_num[pos] = hexdigit + 55;
+        }
+        input = input / 16;
+        pos--;
+    }
 
-    while (n > -1) {
-        uart_putc(hex_num[n]);
-        n--;
+    for (int i = 0; i < 16; i++) {    // 3. print all 16 columns, always
+        uart_putc(hex_num[i]);
     }
 }
 

@@ -1,7 +1,7 @@
 #include "uart.h"
 #include "csr.h"
 #include "trap.h"
-#include "math.h"
+#include "clint.h"
 
 void uart_init() {
   volatile unsigned char *uart = (volatile unsigned char *)0x10000000;
@@ -17,6 +17,8 @@ struct commands {
   char *Name;
 };
 
+
+//Address in hex and length in
 void dump(unsigned long address, unsigned long length) {
     for (int i = 0; i < length; i++) {
         unsigned char b = *(volatile unsigned char *)(address + i);
@@ -53,7 +55,7 @@ void main() {
   write_csr(mtvec, (unsigned long)trap_entry);
 
   struct commands Commands[5];
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 5; i++) {
     Commands[i].ID = i;
     switch (i) {
     case 0:
@@ -133,6 +135,7 @@ void main() {
     case 1:
       // ls
       //  REQUIRES FILE SYSTEM
+      dump(0x0200BFF8, 8);
       break;
     case 2:
       // echo
@@ -190,6 +193,8 @@ void main() {
         }
 
         break;
+    default:
+        uart_puts("Invalid command");
     }
     }
   while (1);
