@@ -2,6 +2,7 @@
 #include "csr.h"
 #include "trap.h"
 #include "clint.h"
+#include <stdint.h>
 
 void uart_init() {
   volatile unsigned char *uart = (volatile unsigned char *)0x10000000;
@@ -54,8 +55,8 @@ void main() {
 
   write_csr(mtvec, (unsigned long)trap_entry);
 
-  struct commands Commands[5];
-  for (int i = 0; i < 5; i++) {
+  struct commands Commands[6];
+  for (int i = 0; i < 6; i++) {
     Commands[i].ID = i;
     switch (i) {
     case 0:
@@ -73,6 +74,9 @@ void main() {
     case 4:
       Commands[i].Name = "dump";
       break;
+    case 5:
+        Commands[i].Name = "poweroff";
+        break;
     }
   }
 
@@ -120,7 +124,7 @@ void main() {
 
     int idCMD = 999;
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 6; i++) {
       if (commandChecker(cmd, Commands[i].Name)) {
         idCMD = i;
         break;
@@ -130,12 +134,12 @@ void main() {
     switch (idCMD) {
     case 0:
       // help
-      uart_puts("Commands: help, ls, echo, cd, dump");
+      uart_puts("Commands: help, ls, echo, cd, dump, poweroff");
       break;
     case 1:
       // ls
       //  REQUIRES FILE SYSTEM
-      dump(0x0200BFF8, 8);
+
       break;
     case 2:
       // echo
@@ -192,6 +196,11 @@ void main() {
             uart_puts("Invalid command");
         }
 
+        break;
+    case 5:
+        uart_puts("Powering off");
+        volatile uint32_t *poweroff = (volatile uint32_t *)0x100000;
+        *poweroff = 0x5555;
         break;
     default:
         uart_puts("Invalid command");
